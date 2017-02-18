@@ -16,6 +16,7 @@ Servo xy;
 float entries[10];
 int i = 0;
 int j = 0;
+float runningSum = 0;
 bool int_flag = false;
 
 void setup() {
@@ -26,23 +27,26 @@ void setup() {
 
   for (int i = 0; i < 10; i++) {
     entries[i] = readGyro();
+    runningSum += entries[i];
   } // fill up the rolling average
   
   xy.attach(3); // pro mini pwm pin
   xy.write(0); // Start at a well-defined value
 
-  MsTimer2::set(1000, a);
+  MsTimer2::set(100, a);
   MsTimer2::start();
   
 }
 
 void loop() {
   if (int_flag) {
+    runningSum -= entries[j % 10];
     entries[j % 10] = readGyro();
+    runningSum += entries[j % 10];
     Serial.println(getAverage(), 2);
+    j++;
     int_flag = false;
   }
-  //delay(100);
 }
 
 void a() {
@@ -92,10 +96,6 @@ void blinkLED() {
 }
 
 float getAverage() {
-  float sum = 0;
-  for (int i = 0; i < 10; i++) {
-    sum += entries[i];
-  }
-  return sum / 10.;
+  return runningSum / 10;
 }
 
