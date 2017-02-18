@@ -18,6 +18,7 @@ int i = 0;
 int j = 0;
 float runningSum = 0;
 float oldAverage;
+int servoVal = 90;
 bool int_flag = false;
 
 void setup() {
@@ -34,7 +35,7 @@ void setup() {
   oldAverage = getAverage();
   
   xy.attach(3); // pro mini pwm pin
-  xy.write(0); // Start at a well-defined value
+  xy.write(servoVal); // Start at a well-defined value
 
   MsTimer2::set(100, a);
   MsTimer2::start();
@@ -43,11 +44,14 @@ void setup() {
 
 void loop() {
   if (int_flag) {
-    runningSum -= entries[j % 10];
-    entries[j % 10] = readGyro();
-    runningSum += entries[j % 10];
+    j %= 10;
+    runningSum -= entries[j];
+    entries[j] = readGyro();
+    runningSum += entries[j];
     float newAverage = getAverage();
-    Serial.println(newAverage - oldAverage, 2); // Print drift in 100 ms
+    //Serial.println(newAverage - oldAverage, 2); // Print drift in 100 ms
+    servoVal += newAverage - oldAverage;
+    rotate(servoVal);
     oldAverage = newAverage;
     j++;
     int_flag = false;
