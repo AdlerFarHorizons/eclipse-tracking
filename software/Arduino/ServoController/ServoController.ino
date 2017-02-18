@@ -1,14 +1,22 @@
+/**********************************************************************
+ * Arduino Uno Program - Controls Servo and Reads Sensors             *
+ * Project: Eclipse Tracking (2017)                                   *
+ * Version: 1.0 (2/18/2017)                                           *
+ * Max Bowman / Jeremy Seeman                                         *
+ **********************************************************************/
 #include <Servo.h>
 #include <Wire.h>
 #include <MsTimer2.h>
 #include <SparkFunLSM9DS1.h>
 #include "config.h"
 
+// Declare global variables
 LSM9DS1 imu;
 Servo xy;
 float entries[10];
 int i = 0;
 int j = 0;
+bool int_flag = false;
 
 void setup() {
   // put your setup code here, to run once:
@@ -23,18 +31,22 @@ void setup() {
   xy.attach(3); // pro mini pwm pin
   xy.write(0); // Start at a well-defined value
 
-  MsTimer2::set(1000, test);
+  MsTimer2::set(1000, a);
   MsTimer2::start();
   
 }
 
 void loop() {
-  Serial.println(entries[0], 2);
+  if (int_flag) {
+    entries[j % 10] = readGyro();
+    Serial.println(getAverage(), 2);
+    int_flag = false;
+  }
+  //delay(100);
 }
 
-void test() {
-  entries[j % 10] = readGyro();
-  j++;
+void a() {
+  int_flag = true;
 }
 
 void setupIMU() {
@@ -60,6 +72,12 @@ void setupIMU() {
   
 }
 
+float readGyro() {
+  if (imu.gyroAvailable()) {
+    imu.readGyro();
+  }
+  return imu.calcGyro(imu.gz);
+}
 // Arguments: integer 0 - 180 degrees
 // Postcondition: servo rotates to integer argument 
 void rotate(int deg) {
@@ -73,16 +91,9 @@ void blinkLED() {
   delay(500);
 }
 
-float readGyro() {
-  if (imu.gyroAvailable()) {
-    imu.readGyro();
-  }
-  return imu.calcGyro(imu.gz);
-}
-
 float getAverage() {
   float sum = 0;
-  for (int i = 0; i < sizeof(entries); i++) {
+  for (int i = 0; i < 10; i++) {
     sum += entries[i];
   }
   return sum / 10.;
