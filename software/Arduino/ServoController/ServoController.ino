@@ -17,6 +17,7 @@ float entries[10];
 int i = 0;
 int j = 0;
 float runningSum = 0;
+float oldAverage;
 bool int_flag = false;
 
 void setup() {
@@ -29,6 +30,8 @@ void setup() {
     entries[i] = readGyro();
     runningSum += entries[i];
   } // fill up the rolling average
+
+  oldAverage = getAverage();
   
   xy.attach(3); // pro mini pwm pin
   xy.write(0); // Start at a well-defined value
@@ -43,7 +46,9 @@ void loop() {
     runningSum -= entries[j % 10];
     entries[j % 10] = readGyro();
     runningSum += entries[j % 10];
-    Serial.println(getAverage(), 2);
+    float newAverage = getAverage();
+    Serial.println(newAverage - oldAverage, 2); // Print drift in 100 ms
+    oldAverage = newAverage;
     j++;
     int_flag = false;
   }
@@ -68,9 +73,13 @@ void setupIMU() {
     Serial.println(" GND     | GND");
     Serial.println(" A4      | SDA");
     Serial.println(" A5      | SCL");
-    while (1) {
+    while (!imu.begin()) {
+      Serial.println(" [ FAILED ] ");
       blinkLED();
+      Serial.print("Connecting...");
+      delay(1000);
     }
+    Serial.println("[ SUCCESS ] ");
   }
   Serial.println(" [ DONE ] ");
   
