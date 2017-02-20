@@ -49,7 +49,6 @@ void loop() {
     entries[j] = readGyro();
     runningSum += entries[j];
     float newAverage = getAverage();
-    //Serial.println(newAverage - oldAverage, 2); // Print drift in 100 ms
     servoVal += newAverage - oldAverage;
     rotate(servoVal);
     oldAverage = newAverage;
