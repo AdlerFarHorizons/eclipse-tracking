@@ -11,21 +11,20 @@
 #include "config.h"
 
 // Declare global variables
-LSM9DS1 imu;
-Servo xy;
-float entries[10];
-int i = 0;
-int j = 0;
-float runningSum = 0;
-float oldAverage;
-int servoVal = 90;
-bool int_flag = false;
-
+LSM9DS1 imu; // imu chip
+Servo xy; // x-y plane servo
+float entries[10]; // rolling average array
+int j = 0; // for maintaining the rolling average array
+float runningSum = 0; // keep a running sum to make average algorithm O(1)
+float oldAverage; // to compute angular movement
+int servoVal = 90; // initial value to set servo at
+bool int_flag = false; // interrupt flag for executing gyro read every 100 ms
+const int LED = 13; // indicator LED
 void setup() {
-  // put your setup code here, to run once:
   Serial.begin(115200);
 
-  setupIMU();
+  pinMode(LED, OUTPUT);
+  setupIMU(); // set up hardware
 
   for (int i = 0; i < 10; i++) {
     entries[i] = readGyro();
@@ -34,11 +33,13 @@ void setup() {
 
   oldAverage = getAverage();
   
-  xy.attach(3); // pro mini pwm pin
-  xy.write(servoVal); // Start at a well-defined value
+  xy.attach(3); // pro mini / uno pwm pin
+  xy.write(servoVal); // Start at a 90 degrees
+
+  blinkLED(50, 10); // Let the use know everything initialized
 
   MsTimer2::set(100, a);
-  MsTimer2::start();
+  MsTimer2::start(); // set up and start a timer interrupt
   
 }
 
@@ -50,7 +51,7 @@ void loop() {
     runningSum += entries[j];
     float newAverage = getAverage();
     servoVal += newAverage - oldAverage;
-    rotate(servoVal);
+    xy.write(servoVal);
     oldAverage = newAverage;
     j++;
     int_flag = false;
@@ -72,13 +73,14 @@ void setupIMU() {
     Serial.println(" Please check connections.");
     Serial.println(" --- Connection Diagram --- ");
     Serial.println(" Arduino |    IMU   ");
+    Serial.println("--------------------");
     Serial.println(" 3.3V    | 1.9-3.6 V");
     Serial.println(" GND     | GND");
     Serial.println(" A4      | SDA");
     Serial.println(" A5      | SCL");
     while (!imu.begin()) {
       Serial.println(" [ FAILED ] ");
-      blinkLED();
+      blinkLED(500, 1);
       Serial.print("Connecting...");
       delay(1000);
     }
@@ -94,17 +96,14 @@ float readGyro() {
   }
   return imu.calcGyro(imu.gz);
 }
-// Arguments: integer 0 - 180 degrees
-// Postcondition: servo rotates to integer argument 
-void rotate(int deg) {
-  xy.write(deg);
-}
 
-void blinkLED() {
-  digitalWrite(13, HIGH);
-  delay(500);
-  digitalWrite(13, LOW);
-  delay(500);
+void blinkLED(int del, int n) {
+  for (int i = 0; i < n; i++) {
+    digitalWrite(13, HIGH);
+    delay(del);
+    digitalWrite(13, LOW);
+    delay(del);
+  }
 }
 
 float getAverage() {
