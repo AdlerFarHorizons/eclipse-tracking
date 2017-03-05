@@ -1,7 +1,7 @@
 /**********************************************************************
  * Arduino Uno Program - Controls Servo and Reads Sensors             *
  * Project: Eclipse Tracking (2017)                                   *
- * Version: 1.0 (2/18/2017)                                           *
+ * Version: 3/04/2017                                                 *
  * Max Bowman / Jeremy Seeman                                         *
  **********************************************************************/
 #include <Servo.h>
@@ -13,48 +13,40 @@
 // Declare global variables
 LSM9DS1 imu; // imu chip
 Servo xy; // x-y plane servo
-float entries[10]; // rolling average array
-int j = 0; // for maintaining the rolling average array
-float runningSum = 0; // keep a running sum to make average algorithm O(1)
-float oldAverage; // to compute angular movement
 int servoVal = 90; // initial value to set servo at
+float oldHeading = 90;
+float newHeading;
 bool int_flag = false; // interrupt flag for executing gyro read every 100 ms
-const int LED = 13; // indicator LED
-void setup() {
-  Serial.begin(115200);
+const int LED = 13; // indicator LED - subject to change (depends on board)
+int samplingRate = 30;
+int motorFlag = 0;
 
+void setup() {
+  Serial.begin(11520);
   pinMode(LED, OUTPUT);
   setupIMU(); // set up hardware
-
-  for (int i = 0; i < 10; i++) {
-    entries[i] = readGyro();
-    runningSum += entries[i];
-  } // fill up the rolling average
-
-  oldAverage = getAverage();
   
   xy.attach(3); // pro mini / uno pwm pin
   xy.write(servoVal); // Start at a 90 degrees
 
   blinkLED(50, 10); // Let the use know everything initialized
 
-  MsTimer2::set(100, a);
-  MsTimer2::start(); // set up and start a timer interrupt
+  MsTimer2::set(samplingRate, a);
+  MsTimer2::start(); // set up and start a timer interrupt to run every 100 ms
   
 }
 
 void loop() {
   if (int_flag) {
-    j %= 10;
-    runningSum -= entries[j];
-    entries[j] = readGyro();
-    runningSum += entries[j];
-    float newAverage = getAverage();
-    servoVal += newAverage - oldAverage;
-    xy.write(servoVal);
-    oldAverage = newAverage;
-    j++;
+    newHeading = getHeading();
+    servoVal += newHeading - oldHeading;
+    oldHeading = newHeading;
     int_flag = false;
+    motorFlag++;
+  }
+  motorFlag %= 4;
+  if (motorFlag == 0) {
+    xy.write(servoVal);
   }
 }
 
@@ -63,50 +55,47 @@ void a() {
 }
 
 void setupIMU() {
-  Serial.print("Setting up IMU...");
   imu.settings.device.commInterface = IMU_MODE_I2C;
   imu.settings.device.mAddress = LSM9DS1_M;
   imu.settings.device.agAddress = LSM9DS1_AG;
-  if (!imu.begin()) {
-    Serial.println(" [ FATAL ERROR ] ");
-    Serial.println(" There was an error connecting to the IMU.");
-    Serial.println(" Please check connections.");
-    Serial.println(" --- Connection Diagram --- ");
-    Serial.println(" Arduino |    IMU   ");
-    Serial.println("--------------------");
-    Serial.println(" 3.3V    | 1.9-3.6 V");
-    Serial.println(" GND     | GND");
-    Serial.println(" A4      | SDA");
-    Serial.println(" A5      | SCL");
-    while (!imu.begin()) {
-      Serial.println(" [ FAILED ] ");
-      blinkLED(500, 1);
-      Serial.print("Connecting...");
-      delay(1000);
-    }
-    Serial.println("[ SUCCESS ] ");
+  while (!imu.begin()) {
+      // could not connect - pulse the LED every 250 ms until the imu connects
+      blinkLED(250, 1);
   }
-  Serial.println(" [ DONE ] ");
-  
 }
 
-float readGyro() {
-  if (imu.gyroAvailable()) {
-    imu.readGyro();
+float getHeading() {
+  float result = 0;
+  if (imu.magAvailable()) {
+    imu.readMag();
   }
-  return imu.calcGyro(imu.gz);
+  float magY = imu.my;
+  float magX = imu.mx;
+  if (magY == 0) {
+    // if magnetometer y vector is 0, then the heading is either 180 degrees or 0 degrees
+    if (magX < 0) result = PI;
+    // otherwise, start at 0.
+  }
+  else {
+    result = atan2(magX, magY); // illustration for why is on elgg
+  }
+  result -= DECLINATION * PI / 180.0; // convert declination to degrees and subtract it from the result
+
+  // adjust values to appropriate range
+  if (result > PI) result -= 2 * PI;
+  else if (result < -PI) result += 2 * PI;
+  else if (result < 0) result += 2 * PI;
+
+  result *= 180.0 / PI; // convert result to degrees
+  return result;
 }
 
 void blinkLED(int del, int n) {
   for (int i = 0; i < n; i++) {
-    digitalWrite(13, HIGH);
+    digitalWrite(LED, HIGH);
     delay(del);
-    digitalWrite(13, LOW);
+    digitalWrite(LED, LOW);
     delay(del);
   }
-}
-
-float getAverage() {
-  return runningSum / 10;
 }
 
