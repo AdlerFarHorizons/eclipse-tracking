@@ -1,7 +1,7 @@
 /**********************************************************************
- * Arduino Uno Program - Controls Servo and Reads Sensors             *
+ * Arduino Uno Program - Controls Servo and Reads IMU                 *
  * Project: Eclipse Tracking (2017)                                   *
- * Version: 1.0 (2/18/2017)                                           *
+ * Version: 1.0 (3/18/2017)                                           *
  * Max Bowman / Jeremy Seeman                                         *
  **********************************************************************/
 #include <Servo.h>
@@ -13,46 +13,42 @@
 // Declare global variables
 LSM9DS1 imu; // imu chip
 Servo xy; // x-y plane servo
-int j = 0; // for maintaining the rolling average array
-float oldAverage; // to compute angular movement
-int servoVal = 90; // initial value to set servo at
+
+int n = 10; // gyro sample
+int k = 200; // servo sample
+int j = 0; // keep track of what to sample
+float runningSum = 0;
+
+float oldVal = 90;
+float servoVal = 90; // initial value to set servo at
 bool int_flag = false; // interrupt flag for executing gyro read every 100 ms
 const int LED = 13; // indicator LED
-void setup() {
-  Serial.begin(115200);
 
+void setup() {
+  Serial.begin(9600);
   pinMode(LED, OUTPUT);
   setupIMU(); // set up hardware
 
-  for (int i = 0; i < 10; i++) {
-    entries[i] = readGyro();
-    runningSum += entries[i];
-  } // fill up the rolling average
+  blinkLED(20, 10); // Let the use know everything initialized
 
-  oldAverage = getAverage();
-  
   xy.attach(3); // pro mini / uno pwm pin
   xy.write(servoVal); // Start at a 90 degrees
 
-  blinkLED(50, 10); // Let the use know everything initialized
-
-  MsTimer2::set(100, a);
+  MsTimer2::set(n, a); // accepts ms argument
   MsTimer2::start(); // set up and start a timer interrupt
   
 }
 
 void loop() {
   if (int_flag) {
-    j %= 10;
-    runningSum -= entries[j];
-    entries[j] = readGyro();
-    runningSum += entries[j];
-    float newAverage = getAverage();
-    servoVal += newAverage - oldAverage;
-    xy.write(servoVal);
-    oldAverage = newAverage;
     j++;
-    int_flag = false;
+    j %= k / n + 1;
+    runningSum += n * readGyro() / 1000;
+    if (j == 0) {
+      oldVal += runningSum;
+      xy.write(oldVal);
+      runningSum = 0;
+    }
   }
 }
 
@@ -61,13 +57,17 @@ void a() {
 }
 
 void setupIMU() {
-  Serial.print("Setting up IMU...");
   imu.settings.device.commInterface = IMU_MODE_I2C;
   imu.settings.device.mAddress = LSM9DS1_M;
   imu.settings.device.agAddress = LSM9DS1_AG;
   while (!imu.begin()) {
     blinkLED(500, 1);
-  }  
+  }
+}
+
+// For continous rotation servos
+void rotateTo(float deg) {
+  
 }
 
 float readGyro() {
@@ -79,13 +79,9 @@ float readGyro() {
 
 void blinkLED(int del, int n) {
   for (int i = 0; i < n; i++) {
-    digitalWrite(13, HIGH);
+    digitalWrite(LED, HIGH);
     delay(del);
-    digitalWrite(13, LOW);
+    digitalWrite(LED, LOW);
     delay(del);
   }
-}
-
-float getAverage() {
-  return runningSum / 10;
 }
