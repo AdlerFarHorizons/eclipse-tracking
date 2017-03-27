@@ -60,6 +60,7 @@ void loop() {
     correctionFactorZ += (Serial.read() - '0');
     if (negZ) correctionFactorZ = -correctionFactorZ;
     altitude.write(currentServoVal + correctionFactorZ);
+    currentServoVal += correctionFactorZ;
   }
   if (int_flag) {
     j++;
