@@ -1,7 +1,7 @@
 /**********************************************************************
- * Arduino Uno Program - Controls Servo and Reads IMU                 *
+ * Arduino Uno Program - Controls Servos and Reads IMU                *
  * Project: Eclipse Tracking (2017)                                   *
- * Version: 1.0 (3/27/2017)                                           *
+ * Version: 2.0 (4/15/2017)                                           *
  * Max Bowman / Jeremy Seeman / George Moe                            *
  **********************************************************************/
 #include <Stepper.h>
@@ -64,13 +64,17 @@ void loop() {
     correctionFactorXY += (Serial.read() - '0');
     if (negXY) correctionFactorXY = -correctionFactorXY;
     rotateStepperBy(correctionFactorXY);
+    currentZBodyPosition += correctionFactorXY;
+    currentZMotorPosition += correctionFactorXY;
     if (Serial.read() == '1') negZ = 1;
     correctionFactorZ += (Serial.read() - '0') * 100;
     correctionFactorZ += (Serial.read() - '0') * 10;
     correctionFactorZ += (Serial.read() - '0');
     if (negZ) correctionFactorZ = -correctionFactorZ;
     altitude.write(currentServoVal + correctionFactorZ);
-    currentServoVal += correctionFactorZ;
+    currentYBodyPosition += correctionFactorZ;
+    currentYMotorPosition += correctionFactorZ;
+    blinkLED(500, correctionFactorZ);
   }
 
   int currentTime = millis();
@@ -133,8 +137,6 @@ void blinkLED(int del, int n) {
 }
 
 void zeroGyro() {
-  Serial.println("CALIBRATING GYRO...PLEASE HOLD STILL...");
-  
   float ySum = 0;
   float zSum = 0;
 
@@ -142,7 +144,8 @@ void zeroGyro() {
 
     if(i%100==0) {
       digitalWrite(LED, HIGH);
-    } else if(i%100==10) {
+    }
+    else if(i%100==10) {
       digitalWrite(LED, LOW);
     }
     
@@ -151,16 +154,10 @@ void zeroGyro() {
     float z = imu.calcGyro(imu.gz);
     ySum += y;
     zSum += z;
-    //Serial.println(String((float)i/calibrationSamples*100)+"% | Y: "+String(y) + ", Z: "+String(z)+", YSUM: "+ySum+", ZSUM: "+String(zSum));
     delay(10);
   }
 
   calibratedYOffset = ySum/calibrationSamples;
   calibratedZOffset = zSum/calibrationSamples;
-
-  //Serial.println("CALIBRATED Y: "+String(calibratedYOffset));
-  //Serial.println("CALIBRATED Z: "+String(calibratedZOffset));
-
-  Serial.println("DONE!");
 }
 
