@@ -61,6 +61,7 @@ void loop() {
     correctionFactorXY += (Serial.read() - '0');
     if (negXY) correctionFactorXY = -correctionFactorXY;
     rotateStepperBy(correctionFactorXY);
+    currentZBodyPosition += correctionFactorXY;
     currentZMotorPosition += correctionFactorXY;
     if (Serial.read() == '1') negZ = 1;
     correctionFactorZ += (Serial.read() - '0') * 100;
