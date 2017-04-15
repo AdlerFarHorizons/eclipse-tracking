@@ -98,7 +98,6 @@ void loop() {
     if (negZ) correctionFactorZ = -correctionFactorZ;
     altitude.write(currentYBodyPosition + correctionFactorZ);
     currentYBodyPosition += correctionFactorZ;
-    blinkLED(500, correctionFactorZ);
   }
 
   // Update orientation data with measurements from gyro
