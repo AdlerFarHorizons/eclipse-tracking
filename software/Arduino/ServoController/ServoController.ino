@@ -23,15 +23,12 @@ int sampleCounter = 0; // keep track of what to sample
 int timer = millis();
 float runningSumAlt = 0;
 float runningSumZ = 0;
-float currentYBodyPosition = 0;
+float currentYBodyPosition = 90;
 float currentZBodyPosition = 0;
-float currentYMotorPosition = 0;
 float currentZMotorPosition = 0;
 int calibrationSamples = 1000;
 float calibratedYOffset = 0;
 float calibratedZOffset = 0;
-
-float currentServoVal = 90;
 
 bool update_flag = false; // interrupt flag for executing motor update
 const int LED = 13; // indicator LED
@@ -42,7 +39,8 @@ void setup() {
   setupIMU(); // set up hardware
   motor.setSpeed(10);
   altitude.attach(3);
-  
+
+  altitude.write(currentYBodyPosition);
   zeroGyro();
 
   blinkLED(20, 10); // Let the use know everything initialized
@@ -63,16 +61,14 @@ void loop() {
     correctionFactorXY += (Serial.read() - '0');
     if (negXY) correctionFactorXY = -correctionFactorXY;
     rotateStepperBy(correctionFactorXY);
-    currentZBodyPosition += correctionFactorXY;
     currentZMotorPosition += correctionFactorXY;
     if (Serial.read() == '1') negZ = 1;
     correctionFactorZ += (Serial.read() - '0') * 100;
     correctionFactorZ += (Serial.read() - '0') * 10;
     correctionFactorZ += (Serial.read() - '0');
     if (negZ) correctionFactorZ = -correctionFactorZ;
-    altitude.write(currentServoVal + correctionFactorZ);
+    altitude.write(currentYBodyPosition + correctionFactorZ);
     currentYBodyPosition += correctionFactorZ;
-    currentYMotorPosition += correctionFactorZ;
     blinkLED(500, correctionFactorZ);
   }
 
@@ -83,10 +79,8 @@ void loop() {
   timer = currentTime;
 
   if(update_flag) {
-    Serial.println("SUM: BODY_Y = " + String(currentYBodyPosition) + " | BODY_Z = " + String(currentZBodyPosition) + " | MOTOR_Y: " + String(currentYMotorPosition) + " | MOTOR_Z: " + String(currentZMotorPosition));
     altitude.write(currentYBodyPosition);
     rotateStepperBy(currentZBodyPosition - currentZMotorPosition);
-    currentYMotorPosition = currentYBodyPosition;
     currentZMotorPosition = currentZBodyPosition;
     sampleCounter = 0;
     update_flag = false;
