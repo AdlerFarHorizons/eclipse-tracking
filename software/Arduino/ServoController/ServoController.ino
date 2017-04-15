@@ -19,7 +19,6 @@ Stepper motor(stepperSteps, stepperPins[0], stepperPins[1], stepperPins[2], step
 Servo altitude;
 
 int motorUpdateRate = 50; // gyro sample rate
-int maxSteps = 10; // maximum number of steps per motor update
 int sampleCounter = 0; // keep track of what to sample
 int timer = millis();
 float runningSumAlt = 0;
