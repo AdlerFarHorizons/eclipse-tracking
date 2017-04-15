@@ -112,8 +112,6 @@ void loop() {
   // Update motor positions
   if(update_flag) {
     // Debug output
-    Serial.println("SUM: BODY_Y = " + String(currentYBodyPosition) + " | BODY_Z = " + String(currentZBodyPosition) + " | MOTOR_Y: " + String(currentYMotorPosition) + " | MOTOR_Z: " + String(currentZMotorPosition));
-
     // Update servo position (Y/ALT)
     altitude.write(currentYBodyPosition);
 
