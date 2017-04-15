@@ -11,45 +11,73 @@
 #include <SparkFunLSM9DS1.h>
 #include "config.h"
 
-// Declare global variables
-LSM9DS1 imu; // imu chip
-int stepperPins[] = {9, 10, 11, 12};
-int stepperSteps = 200;
-Stepper motor(stepperSteps, stepperPins[0], stepperPins[1], stepperPins[2], stepperPins[3]);
-Servo altitude;
-
+// ================ SYSTEM PARAMETERS ===================
+// Sample rates
 int motorUpdateRate = 50; // gyro sample rate
-int sampleCounter = 0; // keep track of what to sample
-int timer = millis();
-float runningSumAlt = 0;
-float runningSumZ = 0;
-float currentYBodyPosition = 90;
-float currentZBodyPosition = 0;
-float currentZMotorPosition = 0;
+
 int calibrationSamples = 1000;
+
+// Initial calibration values
 float calibratedYOffset = 0;
 float calibratedZOffset = 0;
 
-bool update_flag = false; // interrupt flag for executing motor update
-const int LED = 13; // indicator LED
+// Stepper motor
+int stepperPins[] = {9, 10, 11, 12};
+int stepperSteps = 200;
+float stepperStepSize = 9.0/5;
 
+// Servo motor
+float currentServoVal = 90;
+
+// Indicator LED
+const int LED = 13;
+// =======================================================
+
+// ============ Initialize electronic interfaces =========
+// Stepper
+Stepper motor(stepperSteps, stepperPins[0], stepperPins[1], stepperPins[2], stepperPins[3]);
+
+// Servo
+Servo altitude;
+
+// Gyro
+LSM9DS1 imu;
+
+// ============ Runtime variables ========================
+// Orientation data
+float currentYBodyPosition = 90;
+float currentZBodyPosition = 0;
+float currentZMotorPosition = 0;
+
+// Misc.
+int timer = millis();
+bool update_flag = false; // interrupt flag for executing motor update
+
+// Initialize everything
 void setup() {
+  // Initialize I/O
   Serial.begin(115200);
   pinMode(LED, OUTPUT);
-  setupIMU(); // set up hardware
-  motor.setSpeed(10);
-  altitude.attach(3);
 
-  altitude.write(currentYBodyPosition);
+  // Setup hardware
+  setupIMU();         // Gyro
+  motor.setSpeed(20); // Stepper
+  altitude.attach(3); // Servo
+
+  // Calibrate the gyro
   zeroGyro();
 
-  blinkLED(20, 10); // Let the use know everything initialized
+  // Setup motor update interval timer
+  MsTimer2::set(motorUpdateRate, updateMotor);
+  MsTimer2::start();
 
-  MsTimer2::set(motorUpdateRate, updateMotor); // accepts ms argument
-  MsTimer2::start(); // set up and start a timer interrupt  
+  // Blink LED to indicate that initilization has completed!
+  blinkLED(20, 10);
 }
 
 void loop() {
+
+  // Accept corrections from serial
   if (Serial.available() == 8) {
     int correctionFactorXY = 0;
     int correctionFactorZ = 0;
@@ -73,17 +101,28 @@ void loop() {
     blinkLED(500, correctionFactorZ);
   }
 
+  // Update orientation data with measurements from gyro
+  // Just using angular rates from gyro and time deltas to track position using a Reimann sum.
   int currentTime = millis();
   int deltaT = currentTime - timer;
-  currentZBodyPosition += deltaT * readGyroZ() / 1000;
+  currentZBodyPosition += deltaT * readGyroZ() / 1000; // Gyro data is given in 1000ths of a degree, so we divide by 1000
   currentYBodyPosition += deltaT * readGyroY() / 1000;
   timer = currentTime;
 
+  // Update motor positions
   if(update_flag) {
+    // Debug output
+    Serial.println("SUM: BODY_Y = " + String(currentYBodyPosition) + " | BODY_Z = " + String(currentZBodyPosition) + " | MOTOR_Y: " + String(currentYMotorPosition) + " | MOTOR_Z: " + String(currentZMotorPosition));
+
+    // Update servo position (Y/ALT)
     altitude.write(currentYBodyPosition);
-    rotateStepperBy(currentZBodyPosition - currentZMotorPosition);
-    currentZMotorPosition = currentZBodyPosition;
-    sampleCounter = 0;
+
+    // Update stepper position (Z/AZM)
+    float difference = currentZBodyPosition - currentZMotorPosition; // we want currentZMotorPosition + currentZBodyPosition = 0
+    int steps = rotateStepperBy(-difference);
+    currentZMotorPosition += -steps * stepperStepSize;
+
+    // Reset flag
     update_flag = false;
   }
 }
@@ -102,9 +141,10 @@ void setupIMU() {
 }
 
 // For stepper motors
-void rotateStepperBy(float deg) {
-  int steps = deg*5/9;
+int rotateStepperBy(float deg) {
+  int steps = deg/stepperStepSize;
   motor.step(steps);  
+  return steps;
 }
 
 float readGyroZ() {
