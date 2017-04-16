@@ -11,6 +11,7 @@ from contextlib import closing
 STATUS_URL = "http://10.5.5.9/gp/gpControl/status"
 MEDIA_LS_URL = "http://10.5.5.9/gp/gpMediaList"
 TRIGGER_URL = "http://10.5.5.9/gp/gpControl/command/shutter?p=1"
+MEDIA_URL = "http://10.5.5.9:8080/videos/DCIM/103GOPRO/"
 
 # initial settings urls
 INIT_SETTINGS_BASE = "http://10.5.5.9/gp/gpControl/setting/{}/{}"
@@ -20,7 +21,6 @@ INIT_SETTINGS_KEYS = {
     23: 1,  # set color streaming mode to flat
     24: 2,  # set iso limit to 200ms
     14: 2,  # set sharpness to low
-
 }
 
 # status parsing constants
@@ -80,5 +80,11 @@ def get_media_list():
     return _send_command(MEDIA_LS_URL)
 
 
+def initialize_camera():
+    for k, v in INIT_SETTINGS_KEYS.iteritems():
+        _send_command(INIT_SETTINGS_BASE.format(k, v))
+
+
 def capture():
     return _send_command(TRIGGER_URL)
+
