@@ -54,7 +54,7 @@ while True:
 
     result += str(delta[0])
 
-    if delta[0] < 0:
+    if delta[1] < 0:
         result += '1'
     else:
         result += '0'
