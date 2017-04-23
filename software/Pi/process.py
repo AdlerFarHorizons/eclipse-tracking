@@ -42,28 +42,19 @@ while True:
 
     result = ""
 
-    if delta[0] < 0:
-        result += '1'
-    else:
-        result += '0'
-
-    if abs(delta[0]) < 100:
-        result += '0'
-        if abs(delta[0]) < 10:
+    for d in delta:
+        if (d == 0):
+            result += '0000'
+            continue
+        if d < 0:
+            result += '1'
+            d = abs(d)
+        else:
             result += '0'
-
-    result += str(delta[0])
-
-    if delta[1] < 0:
-        result += '1'
-    else:
-        result += '0'
-
-    if abs(delta[1]) < 100:
-        result += '0'
-        if abs(delta[1]) < 10:
+        for i in range(0, 3 - len(str(d))):
             result += '0'
+        result += str(d)
 
-    result += str(delta[1])
+    print result
 
     ###myPort.write(bytes(result))
