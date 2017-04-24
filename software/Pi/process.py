@@ -33,15 +33,10 @@ while True:
 
     (minVal, maxVal, minLoc, maxLoc) = cv2.minMaxLoc(gray)
 
-    # negative means move left / up
-    delta = [maxLoc[0] - center[0], maxLoc[1] - center[1]]
-
-    for i in range(0, 2):
-        delta[i] = int(delta[i] * conversion[i])
-
     result = ""
 
-    for d in delta:
+    for i in range(0, 2):
+        d = int((maxLoc[i] - center[i]) * conversion[i])
         if (d == 0):
             result += '0000'
             continue
@@ -53,5 +48,5 @@ while True:
         for i in range(0, 3 - len(str(d))):
             result += '0'
         result += str(d)
-
+    print(result)
     ###myPort.write(bytes(result))
