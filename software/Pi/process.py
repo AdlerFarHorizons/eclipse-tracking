@@ -13,7 +13,7 @@ import numpy as np
 import cv2
 import serial
 import time
-###import RPi.GPIO as gpio
+import RPi.GPIO as gpio
 import gopro_wifi_api_hero4
 
 #Constants
@@ -29,8 +29,8 @@ conversion   = (widthAngle / widthPixels, heightAngle / heightPixels)
 center       = (widthPixels / 2, heightPixels / 2)
 
 #Set up RPi GPIO
-###gpio.setmode(gpio.BOARD)
-###gpio.setup(ledPin, gpio.OUTPUT)
+gpio.setmode(gpio.BOARD)
+gpio.setup(ledPin, gpio.OUTPUT)
 
 #Helper functions
 date = lambda _=None: time.strftime("%a, %b %d %Y %H:%M:%S", time.localtime())
