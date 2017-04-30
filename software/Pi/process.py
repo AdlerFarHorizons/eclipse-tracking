@@ -42,8 +42,7 @@ def blink(ledPin):
 
 logfile.write("========= Log File on " + date() + " =========\n")
 
-try:
-    myPort = serial.Serial('dev/serial0', 115200)
+try: myPort = serial.Serial('dev/serial0', 115200)
 except:
     ###while True:
         ###blink(ledPin)
@@ -75,8 +74,7 @@ while True:
             result += '0'
         result += str(d)
     #send the data
-    try:
-        myPort.write(bytes(result))
-    except:
-        logfile.write("[serial write error], "   + date() + ", " + result + "\n")
+    try: myPort.write(bytes(result))
+    except: logfile.write("[serial write error], "   + date() + ", " + result + "\n")
+
 logfile.close()
