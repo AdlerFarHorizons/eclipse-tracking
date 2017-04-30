@@ -1,27 +1,53 @@
 """
 Detects brightest region in image and finds angles needed to rotate
 to center it based on GoPro 4 FOV
-Note: uncomment serial code when in use on Raspberry Pi 3 (start with ###)
+Note: uncomment code commented out with ### when in use on Raspberry Pi 3
 Algorithms: Gaussian Blur and Min/Max Loc
 Python Version: 2.7
 See trello for a comprehensive description of the communication protocol
 Dependencies: PySerial, Numpy, and OpenCV
-Version: 4/23/17
+Version: 4/30/17
 """
 
 import numpy as np
 import cv2
 import serial
+import time
+###import RPi.GPIO as gpio
+import gopro_wifi_api_hero4
 
 #Constants
-widthAngle = 13.58
-heightAngle = 7.66
-widthPixels = 1280
+widthAngle   = 13.58
+heightAngle  = 7.66
+widthPixels  = 1280
 heightPixels = 720
 
-conversion = (widthAngle / widthPixels, heightAngle / heightPixels)
-center = (widthPixels / 2, heightPixels / 2)
-###myPort = serial.Serial('dev/serial0', 11520)
+logfile      = open('log.txt', 'a')
+ledPin       = 7
+
+conversion   = (widthAngle / widthPixels, heightAngle / heightPixels)
+center       = (widthPixels / 2, heightPixels / 2)
+
+#Set up RPi GPIO
+###gpio.setmode(gpio.BOARD)
+###gpio.setup(ledPin, gpio.OUTPUT)
+
+#Helper functions
+date = lambda _=None: time.strftime("%a, %b %d %Y %H:%M:%S", time.localtime())
+def blink(ledPin):
+    gpio.output(ledPin, True)
+    time.sleep(0.5)
+    gpio.output(ledPin, False)
+    time.sleep(0.5)
+
+logfile.write("========= Log File on " + date() + " =========\n")
+
+try:
+    myPort = serial.Serial('dev/serial0', 115200)
+except:
+    ###while True:
+        ###blink(ledPin)
+    logfile.write("[serial cnnct error], " + date() + ", --------" + "\n")
 
 #Loop
 while True:
@@ -48,5 +74,9 @@ while True:
         for i in range(0, 3 - len(str(d))):
             result += '0'
         result += str(d)
-    print(result)
-    ###myPort.write(bytes(result))
+    #send the data
+    try:
+        myPort.write(bytes(result))
+    except:
+        logfile.write("[serial write error], "   + date() + ", " + result + "\n")
+logfile.close()
