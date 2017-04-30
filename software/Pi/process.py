@@ -65,7 +65,7 @@ while True:
         if (d == 0):
             result += '0000'
             continue
-        if d < 0:
+        elif d < 0:
             result += '1'
             d = abs(d)
         else:
