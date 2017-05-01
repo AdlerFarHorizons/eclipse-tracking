@@ -5,16 +5,16 @@ Note: uncomment code commented out with ### when in use on Raspberry Pi 3
 Algorithms: Gaussian Blur and Min/Max Loc
 Python Version: 2.7
 See trello for a comprehensive description of the communication protocol
-Dependencies: PySerial, Numpy, and OpenCV
-Version: 4/30/17
+Dependencies: PySerial, Numpy, time, gopro_wifi_api_hero4, log, ui, and OpenCV
+Version: 5/01/17
 """
 
 import numpy as np
 import cv2
 import serial
-import time
-import RPi.GPIO as gpio
 import gopro_wifi_api_hero4
+import log
+import ui
 
 #Constants
 widthAngle   = 13.58
@@ -22,59 +22,51 @@ heightAngle  = 7.66
 widthPixels  = 1280
 heightPixels = 720
 
-logfile      = open('log.txt', 'a')
-ledPin       = 7
-
 conversion   = (widthAngle / widthPixels, heightAngle / heightPixels)
 center       = (widthPixels / 2, heightPixels / 2)
 
-#Set up RPi GPIO
-gpio.setmode(gpio.BOARD)
-gpio.setup(ledPin, gpio.OUTPUT)
+myPort = None
 
-#Helper functions
-date = lambda _=None: time.strftime("%a, %b %d %Y %H:%M:%S", time.localtime())
-def blink(ledPin):
-    gpio.output(ledPin, True)
-    time.sleep(0.5)
-    gpio.output(ledPin, False)
-    time.sleep(0.5)
+#Set up hardware and logging
+def setup():
+    ui.setup()
+    log.setup()
 
-logfile.write("========= Log File on " + date() + " =========\n")
+    myPort = serial.Serial('dev/serial0', 115200)
+    ui.blink()
 
-try: myPort = serial.Serial('dev/serial0', 115200)
-except:
-    ###while True:
-        ###blink(ledPin)
-    logfile.write("[serial cnnct error], " + date() + ", --------" + "\n")
+#Correction loop
+def main():
+    while True:
+        # The image will eventually be retrieved from a GoPro 4
+        image = cv2.imread("myTest.png")
 
-#Loop
-while True:
-    # The image will eventually be retrieved from a GoPro 4
-    image = cv2.imread("myTest.png")
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        gray = cv2.GaussianBlur(gray, (41, 41), 0)
 
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    gray = cv2.GaussianBlur(gray, (41, 41), 0)
+        (minVal, maxVal, minLoc, maxLoc) = cv2.minMaxLoc(gray)
 
-    (minVal, maxVal, minLoc, maxLoc) = cv2.minMaxLoc(gray)
+        result = ""
 
-    result = ""
+        for i in range(0, 2):
+            d = int((maxLoc[i] - center[i]) * conversion[i])
+            if (d == 0):
+                result += '0000'
+                continue
+            elif d < 0:
+                result += '1'
+                d = abs(d)
+            else:
+                result += '0'
+            for i in range(0, 3 - len(str(d))):
+                result += '0'
+            result += str(d)
 
-    for i in range(0, 2):
-        d = int((maxLoc[i] - center[i]) * conversion[i])
-        if (d == 0):
-            result += '0000'
-            continue
-        elif d < 0:
-            result += '1'
-            d = abs(d)
-        else:
-            result += '0'
-        for i in range(0, 3 - len(str(d))):
-            result += '0'
-        result += str(d)
-    #send the data
-    try: myPort.write(bytes(result))
-    except: logfile.write("[serial write error], "   + date() + ", " + result + "\n")
+        try: myPort.write(bytes(result))
+        except: log.write_log('serial write')
 
-logfile.close()
+    log.close()
+
+if __name__ == '__main__':
+    setup()
+    main()
