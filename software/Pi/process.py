@@ -19,11 +19,11 @@ import os
 
 #Constants
 widthAngle   = 13.58
-heightAngle  = 7.66
+#heightAngle  = 7.66
 widthPixels  = 1280
-heightPixels = 720
+#heightPixels = 720
 
-conversion   = (widthAngle / widthPixels, heightAngle / heightPixels)
+conversion   = widthAngle / widthPixels
 center       = (widthPixels / 2, heightPixels / 2)
 
 myPort = None
@@ -54,19 +54,17 @@ def main():
 
         result = ""
 
-        for i in range(0, 2):
-            d = int((maxLoc[i] - center[i]) * conversion[i])
-            if (d == 0):
-                result += '0000'
-                continue
-            elif d < 0:
-                result += '1'
-                d = abs(d)
-            else:
-                result += '0'
-            for i in range(0, 3 - len(str(d))):
-                result += '0'
-            result += str(d)
+        delta = int((maxLoc[0] - center[0]) * conversion)
+        if (delta == 0):
+            result = '0000'
+        elif delta < 0:
+            result += '1'
+            delta = abs(d)
+        else:
+            result += '0'
+        for i in range(0, 3 - len(str(delta))):
+            result += '0'
+        result += str(delta)
 
         try:
             myPort.write(bytes(result))
