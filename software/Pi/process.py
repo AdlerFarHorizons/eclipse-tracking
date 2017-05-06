@@ -12,9 +12,10 @@ Version: 5/01/17
 import numpy as np
 import cv2
 import serial
-import gopro_wifi_api_hero4
+import gopro_wifi_api_hero3 as api
 import log
 import ui
+import os
 
 #Constants
 widthAngle   = 13.58
@@ -27,19 +28,24 @@ center       = (widthPixels / 2, heightPixels / 2)
 
 myPort = None
 
+counter = 0
+
 #Set up hardware and logging
 def setup():
     ui.setup()
     log.setup()
-
     myPort = serial.Serial('/dev/serial0', 115200)
     ui.blink()
 
 #Correction loop
 def main():
     while True:
-        # The image will eventually be retrieved from a GoPro 4
-        image = cv2.imread("myTest.png")
+        # Retrieve image
+        api.capture()
+        api.transfer_latest_photo()
+        os.system('mv *.JPEG image.JPEG')
+        image = cv2.imread("image.png")
+        os.system('rm *.JPEG')
 
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         gray = cv2.GaussianBlur(gray, (41, 41), 0)
@@ -62,8 +68,12 @@ def main():
                 result += '0'
             result += str(d)
 
-        try: myPort.write(bytes(result))
-        except: log.write_log('serial write')
+        try:
+            myPort.write(bytes(result))
+            log.write_log('normal exec_', result)
+        except: log.write_log('serial error', result)
+	
+        time.sleep(0.5)
 
     log.close()
 

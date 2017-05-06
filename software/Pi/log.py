@@ -15,8 +15,8 @@ def setup():
     logfile = open('log.txt', 'a')
     logfile.write("========= Log File on " + date() + " =========\n")
 
-def write_log(errortype):
-    logfile.write("[" + errortype + " error], "   + date() + ", " + result + "\n")
+def write_log(errortype, result):
+    logfile.write("[" + errortype + "], "   + date() + ", " + result + "\n")
 
 def close():
     logfile.close()
