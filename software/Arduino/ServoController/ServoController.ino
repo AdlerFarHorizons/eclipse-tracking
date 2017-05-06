@@ -78,7 +78,7 @@ void setup() {
 void loop() {
 
   // Accept corrections from serial
-  if (Serial.available() == 8) {
+  if (Serial.available() == 4) {
     int correctionFactorXY = 0;
     int correctionFactorZ = 0;
     byte negXY = 0;
@@ -89,6 +89,7 @@ void loop() {
     correctionFactorXY += (Serial.read() - '0');
     if (negXY) correctionFactorXY = -correctionFactorXY;
     rotateStepperBy(correctionFactorXY);
+    /*
     currentZBodyPosition += correctionFactorXY;
     currentZMotorPosition += correctionFactorXY;
     if (Serial.read() == '1') negZ = 1;
@@ -98,6 +99,7 @@ void loop() {
     if (negZ) correctionFactorZ = -correctionFactorZ;
     altitude.write(currentYBodyPosition + correctionFactorZ);
     currentYBodyPosition += correctionFactorZ;
+    */
   }
 
   // Update orientation data with measurements from gyro
