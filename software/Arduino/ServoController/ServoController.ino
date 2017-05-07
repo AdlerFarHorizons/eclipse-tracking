@@ -4,7 +4,6 @@
  * Version: 2.0 (4/15/2017)                                           *
  * Max Bowman / Jeremy Seeman / George Moe                            *
  **********************************************************************/
-#include <Stepper.h>
 #include <Servo.h>
 #include <Wire.h>
 #include <MsTimer2.h>
@@ -28,6 +27,7 @@ const float RPM = 1.5;
 const float CLOCK_WISE_SPEED = 40;
 const float COUNTER_CLOCK_WISE_SPEED = 100;
 const float ZERO_SPEED = 75;
+const byte GEAR_RATIO = 2; // servo gear : slip gear
 // =======================================================
 
 // ============ Initialize electronic interfaces =========
@@ -112,7 +112,7 @@ void rotateServoBy(float deg) {
   float wait = abs((deg / 360) / RPM);
   if (deg < 0) azimuth.write(COUNTER_CLOCK_WISE_SPEED);
   else azimuth.write(CLOCK_WISE_SPEED);
-  delay(wait);
+  delay(wait * GEAR_RATIO);
   azimuth.write(ZERO_SPEED);
 }
 
