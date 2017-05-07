@@ -6,7 +6,7 @@ Algorithms: Gaussian Blur and Min/Max Loc
 Python Version: 2.7
 See trello for a comprehensive description of the communication protocol
 Dependencies: PySerial, Numpy, time, gopro_wifi_api_hero4, log, ui, and OpenCV
-Version: 5/01/17
+Version: 5/07/17
 """
 
 import numpy as np
@@ -19,9 +19,9 @@ import os
 
 #Constants
 widthAngle   = 13.58
-#heightAngle  = 7.66
+heightAngle  = 7.66
 widthPixels  = 1280
-#heightPixels = 720
+heightPixels = 720
 
 conversion   = widthAngle / widthPixels
 center       = (widthPixels / 2, heightPixels / 2)
