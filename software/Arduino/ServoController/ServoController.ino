@@ -14,40 +14,29 @@
 // ================ SYSTEM PARAMETERS ===================
 // Sample rates
 int motorUpdateRate = 50; // gyro sample rate
-
 int calibrationSamples = 1000;
 
-// Initial calibration values
-float calibratedYOffset = 0;
-float calibratedZOffset = 0;
-
-// Stepper motor
-int stepperPins[] = {9, 10, 11, 12};
-int stepperSteps = 200;
-float stepperStepSize = 9.0/5;
-
-// Servo motor
-float currentServoVal = 90;
+// Initial calibration value
+float calibratedOffset = 0;
 
 // Indicator LED
 const int LED = 13;
+
+// These values will need to be experimentally found using
+// a servo
+const float RPM = 1.5;
+const float CLOCK_WISE_SPEED = 40;
+const float COUNTER_CLOCK_WISE_SPEED = 100;
+const float ZERO_SPEED = 75;
 // =======================================================
 
 // ============ Initialize electronic interfaces =========
-// Stepper
-Stepper motor(stepperSteps, stepperPins[0], stepperPins[1], stepperPins[2], stepperPins[3]);
-
-// Servo
-Servo altitude;
-
-// Gyro
+Servo azimuth;
 LSM9DS1 imu;
 
 // ============ Runtime variables ========================
 // Orientation data
-float currentYBodyPosition = 90;
-float currentZBodyPosition = 0;
-float currentZMotorPosition = 0;
+float positionChange;
 
 // Misc.
 int timer = millis();
@@ -61,11 +50,10 @@ void setup() {
 
   // Setup hardware
   setupIMU();         // Gyro
-  motor.setSpeed(20); // Stepper
-  altitude.attach(3); // Servo
+  azimuth.attach(3);
 
   // Calibrate the gyro
-  zeroGyro();
+  calibratedOffset = zeroGyro(calibrationSamples);
 
   // Setup motor update interval timer
   MsTimer2::set(motorUpdateRate, updateMotor);
@@ -79,48 +67,28 @@ void loop() {
 
   // Accept corrections from serial
   if (Serial.available() == 4) {
-    int correctionFactorXY = 0;
-    int correctionFactorZ = 0;
-    byte negXY = 0;
-    byte negZ = 0;
-    if (Serial.read() == '1') negXY = 1;
-    correctionFactorXY += (Serial.read() - '0') * 100;
-    correctionFactorXY += (Serial.read() - '0') * 10;
-    correctionFactorXY += (Serial.read() - '0');
-    if (negXY) correctionFactorXY = -correctionFactorXY;
-    rotateStepperBy(correctionFactorXY);
-    /*
-    currentZBodyPosition += correctionFactorXY;
-    currentZMotorPosition += correctionFactorXY;
-    if (Serial.read() == '1') negZ = 1;
-    correctionFactorZ += (Serial.read() - '0') * 100;
-    correctionFactorZ += (Serial.read() - '0') * 10;
-    correctionFactorZ += (Serial.read() - '0');
-    if (negZ) correctionFactorZ = -correctionFactorZ;
-    altitude.write(currentYBodyPosition + correctionFactorZ);
-    currentYBodyPosition += correctionFactorZ;
-    */
+    int correctionFactor = 0;
+    byte negative = 0;
+    if (Serial.read() == '1') negative = 1;
+    for (int i = 100; i >= 1; i /= 10) {
+      correctionFactor += (Serial.read() - '0') * 100;
+    }
+    if (negative) correctionFactor = -correctionFactor;
+    rotateServoBy(correctionFactor);
   }
 
   // Update orientation data with measurements from gyro
   // Just using angular rates from gyro and time deltas to track position using a Reimann sum.
   int currentTime = millis();
   int deltaT = currentTime - timer;
-  currentZBodyPosition += deltaT * readGyroZ() / 1000; // Gyro data is given in 1000ths of a degree, so we divide by 1000
-  currentYBodyPosition += deltaT * readGyroY() / 1000;
+  positionChange += deltaT * readGyro() / 1000; // Gyro data is given in 1000ths of a degree, so we divide by 1000
   timer = currentTime;
 
-  // Update motor positions
+  // Update motor position
   if(update_flag) {
-    // Debug output
-    // Update servo position (Y/ALT)
-    altitude.write(currentYBodyPosition);
-
     // Update stepper position (Z/AZM)
-    float difference = currentZBodyPosition - currentZMotorPosition; // we want currentZMotorPosition + currentZBodyPosition = 0
-    int steps = rotateStepperBy(-difference);
-    currentZMotorPosition += -steps * stepperStepSize;
-
+    rotateServoBy(-positionChange);
+    positionChange = 0;
     // Reset flag
     update_flag = false;
   }
@@ -140,24 +108,19 @@ void setupIMU() {
 }
 
 // For stepper motors
-int rotateStepperBy(float deg) {
-  int steps = deg/stepperStepSize;
-  motor.step(steps);  
-  return steps;
+void rotateServoBy(float deg) {
+  float wait = abs((deg / 360) / RPM);
+  if (deg < 0) azimuth.write(COUNTER_CLOCK_WISE_SPEED);
+  else azimuth.write(CLOCK_WISE_SPEED);
+  delay(wait);
+  azimuth.write(ZERO_SPEED);
 }
 
-float readGyroZ() {
+float readGyro() {
   if (imu.gyroAvailable()) {
     imu.readGyro();
   }
-  return imu.calcGyro(imu.gz) - calibratedZOffset;
-}
-
-float readGyroY() {
-  if (imu.gyroAvailable()) {
-    imu.readGyro();
-  }
-  return imu.calcGyro(imu.gy) - calibratedYOffset;
+  return imu.calcGyro(imu.gz) - calibratedOffset;
 }
 
 void blinkLED(int del, int n) {
@@ -169,28 +132,17 @@ void blinkLED(int del, int n) {
   }
 }
 
-void zeroGyro() {
-  float ySum = 0;
+int zeroGyro(int calibrationSamples) {
   float zSum = 0;
-
   for(int i = 0; i < calibrationSamples; i++) {
-
-    if(i%100==0) {
-      digitalWrite(LED, HIGH);
+    if(i % 1000 == 0) {
+      blinkLED(500, 1);
     }
-    else if(i%100==10) {
-      digitalWrite(LED, LOW);
-    }
-    
     imu.readGyro();
-    float y = imu.calcGyro(imu.gy);
     float z = imu.calcGyro(imu.gz);
-    ySum += y;
     zSum += z;
     delay(10);
   }
-
-  calibratedYOffset = ySum/calibrationSamples;
-  calibratedZOffset = zSum/calibrationSamples;
+  return zSum / calibrationSamples;
 }
 
