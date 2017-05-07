@@ -28,8 +28,6 @@ center       = (widthPixels / 2, heightPixels / 2)
 
 myPort = None
 
-counter = 0
-
 #Set up hardware and logging
 def setup():
     ui.setup()
