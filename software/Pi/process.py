@@ -44,7 +44,7 @@ def main():
         api.capture()
         api.transfer_latest_photo()
         os.system('mv *.JPEG image.JPEG')
-        image = cv2.imread("image.png")
+        image = cv2.imread("image.JPEG")
         os.system('rm *.JPEG')
 
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
