@@ -1,7 +1,7 @@
 /**********************************************************************
  * Arduino Uno Program - Controls Servos and Reads IMU                *
  * Project: Eclipse Tracking (2017)                                   *
- * Version: 2.0 (4/15/2017)                                           *
+ * Version: 3.0 (5/07/2017)                                           *
  * Max Bowman / Jeremy Seeman / George Moe                            *
  **********************************************************************/
 #include <Servo.h>
@@ -28,7 +28,6 @@ const float CLOCK_WISE_SPEED = 40;
 const float COUNTER_CLOCK_WISE_SPEED = 100;
 const float ZERO_SPEED = 75;
 const byte GEAR_RATIO = 2; // servo gear : slip gear
-// =======================================================
 
 // ============ Initialize electronic interfaces =========
 Servo azimuth;
@@ -42,7 +41,9 @@ float positionChange;
 int timer = millis();
 bool update_flag = false; // interrupt flag for executing motor update
 
-// Initialize everything
+/**
+    Sets up everything
+*/
 void setup() {
   // Initialize I/O
   Serial.begin(115200);
@@ -94,10 +95,17 @@ void loop() {
   }
 }
 
+/**
+    Triggered every motorUpdateRate milliseconds
+    Starts the motor update
+*/
 void updateMotor() {
   update_flag = true;
 }
 
+/**
+    Sets up the IMU
+*/
 void setupIMU() {
   imu.settings.device.commInterface = IMU_MODE_I2C;
   imu.settings.device.mAddress = LSM9DS1_M;
@@ -107,7 +115,11 @@ void setupIMU() {
   }
 }
 
-// For stepper motors
+/**
+    Rotates a continuous rotation servo a specified number
+    of degrees.
+    @param degrees to rotate the servo
+*/
 void rotateServoBy(float deg) {
   float wait = abs((deg / 360) / RPM);
   if (deg < 0) azimuth.write(COUNTER_CLOCK_WISE_SPEED);
@@ -116,6 +128,10 @@ void rotateServoBy(float deg) {
   azimuth.write(ZERO_SPEED);
 }
 
+/**
+    Reads the IMU's gyro
+    @return rate in degrees / ms
+*/
 float readGyro() {
   if (imu.gyroAvailable()) {
     imu.readGyro();
@@ -123,6 +139,11 @@ float readGyro() {
   return imu.calcGyro(imu.gz) - calibratedOffset;
 }
 
+/**
+    Blinks an LED on pin 13
+    @param delay in milliseconds
+    @param number of blinks
+*/
 void blinkLED(int del, int n) {
   for (int i = 0; i < n; i++) {
     digitalWrite(LED, HIGH);
@@ -132,6 +153,11 @@ void blinkLED(int del, int n) {
   }
 }
 
+/**
+    Finds the calibration constant of the
+    gyro.
+    @param number of calibration samples
+*/
 int zeroGyro(int calibrationSamples) {
   float zSum = 0;
   for(int i = 0; i < calibrationSamples; i++) {
@@ -145,4 +171,3 @@ int zeroGyro(int calibrationSamples) {
   }
   return zSum / calibrationSamples;
 }
-
