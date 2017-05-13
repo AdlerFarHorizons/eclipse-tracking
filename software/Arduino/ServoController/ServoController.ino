@@ -1,9 +1,11 @@
-/**********************************************************************
- * Arduino Uno Program - Controls Servos and Reads IMU                *
- * Project: Eclipse Tracking (2017)                                   *
- * Version: 3.0 (5/07/2017)                                           *
- * Max Bowman / Jeremy Seeman / George Moe                            *
- **********************************************************************/
+/***********************************************************************
+ * Description: Counteracts a change in angle by reading a gyro sensor *
+ * and rotating a stepper motor. Accepts correction factors via serial *
+ * at 115200 baud.                                                     *
+ * Project: Eclipse Tracking (2017)                                    *
+ * @Version 4.0 (5/13/2017)                                            *
+ * @Author Max Bowman / Jeremy Seeman / George Moe                     *
+ ***********************************************************************/
 #include <Stepper.h>
 #include <Wire.h>
 #include <MsTimer2.h>
@@ -35,12 +37,12 @@ Stepper azimuth(numSteps, stepperPins[0], stepperPins[1], stepperPins[2], steppe
 // Orientation data
 float positionChange;
 
-// Misc.
+// Interrupt flag
 int timer = millis();
 bool update_flag = false; // interrupt flag for executing motor update
 
 /**
-    Sets up everything
+    Sets up system
 */
 void setup() {
   // Initialize I/O
@@ -48,7 +50,7 @@ void setup() {
   pinMode(LED, OUTPUT);
 
   // Setup hardware
-  setupIMU();         // Gyro
+  setupIMU(); // Gyro
 
   // Calibrate the gyro
   calibratedOffset = zeroGyro(calibrationSamples);
@@ -56,9 +58,6 @@ void setup() {
   // Setup motor update interval timer
   MsTimer2::set(motorUpdateRate, updateMotor);
   MsTimer2::start();
-
-  // Blink LED to indicate that initilization has completed!
-  blinkLED(20, 10);
 }
 
 void loop() {
@@ -69,7 +68,7 @@ void loop() {
     byte negative = 0;
     if (Serial.read() == '1') negative = 1;
     for (int i = 100; i >= 1; i /= 10) {
-      correctionFactor += (Serial.read() - '0') * 100;
+      correctionFactor += (Serial.read() - '0') * i;
     }
     if (negative) correctionFactor = -correctionFactor;
     rotateStepperBy(correctionFactor);
@@ -108,8 +107,36 @@ void setupIMU() {
   imu.settings.device.mAddress = LSM9DS1_M;
   imu.settings.device.agAddress = LSM9DS1_AG;
   while (!imu.begin()) {
-    digitalWrite(LED, HIGH);
+    blinkLED(1000, 1);
   }
+  blinkLED(50, 15);
+}
+
+/**
+    Reads the IMU's gyro
+    @return rate in degrees / ms
+*/
+float readGyro() {
+  if (imu.gyroAvailable()) {
+    imu.readGyro();
+  }
+  return imu.calcGyro(imu.gz) - calibratedOffset;
+}
+
+/**
+    Finds the calibration constant of the
+    gyro.
+    @param number of calibration samples
+*/
+int zeroGyro(int calibrationSamples) {
+  float zSum = 0;
+  for (int i = 0; i < calibrationSamples; i++) {
+    imu.readGyro();
+    float z = imu.calcGyro(imu.gz);
+    zSum += z;
+    delay(10);
+  }
+  return zSum / calibrationSamples;
 }
 
 /**
@@ -126,17 +153,6 @@ int rotateStepperBy(float deg) {
 }
 
 /**
-    Reads the IMU's gyro
-    @return rate in degrees / ms
-*/
-float readGyro() {
-  if (imu.gyroAvailable()) {
-    imu.readGyro();
-  }
-  return imu.calcGyro(imu.gz) - calibratedOffset;
-}
-
-/**
     Blinks an LED on pin 13
     @param delay in milliseconds
     @param number of blinks
@@ -148,23 +164,4 @@ void blinkLED(int del, int n) {
     digitalWrite(LED, LOW);
     delay(del);
   }
-}
-
-/**
-    Finds the calibration constant of the
-    gyro.
-    @param number of calibration samples
-*/
-int zeroGyro(int calibrationSamples) {
-  float zSum = 0;
-  for(int i = 0; i < calibrationSamples; i++) {
-    if(i % 1000 == 0) {
-      blinkLED(500, 1);
-    }
-    imu.readGyro();
-    float z = imu.calcGyro(imu.gz);
-    zSum += z;
-    delay(10);
-  }
-  return zSum / calibrationSamples;
 }
