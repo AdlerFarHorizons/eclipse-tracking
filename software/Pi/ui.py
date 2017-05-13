@@ -13,6 +13,7 @@ ledPin = 16 #GPIO23
 #Set up RPi GPIO
 def setup():
     gpio.setmode(gpio.BOARD)
+    gpio.setwarnings(False)
     gpio.setup(ledPin, gpio.OUT)
 
 def blink(n):
