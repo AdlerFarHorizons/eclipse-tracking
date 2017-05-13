@@ -4,7 +4,7 @@
  * Version: 3.0 (5/07/2017)                                           *
  * Max Bowman / Jeremy Seeman / George Moe                            *
  **********************************************************************/
-#include <Servo.h>
+#include <Stepper.h>
 #include <Wire.h>
 #include <MsTimer2.h>
 #include <SparkFunLSM9DS1.h>
@@ -21,18 +21,16 @@ float calibratedOffset = 0;
 // Indicator LED
 const int LED = 13;
 
-// These values will need to be experimentally found using
-// a servo
-const float RPM = 1.5;
-const float CLOCK_WISE_SPEED = 40;
-const float COUNTER_CLOCK_WISE_SPEED = 100;
-const float ZERO_SPEED = 75;
-const byte GEAR_RATIO = 2; // servo gear : slip gear
+const byte GEAR_RATIO = 1; // servo gear : slip gear
 
 // ============ Initialize electronic interfaces =========
-Servo azimuth;
 LSM9DS1 imu;
 
+int stepperPins[] = {9, 10, 11, 12};
+int numSteps = 200;
+float stepSize = 9.0 / 5.0;
+
+Stepper azimuth(numSteps, stepperPins[0], stepperPins[1], stepperPins[2], stepperPins[3]);
 // ============ Runtime variables ========================
 // Orientation data
 float positionChange;
@@ -51,7 +49,6 @@ void setup() {
 
   // Setup hardware
   setupIMU();         // Gyro
-  azimuth.attach(3);
 
   // Calibrate the gyro
   calibratedOffset = zeroGyro(calibrationSamples);
@@ -75,7 +72,7 @@ void loop() {
       correctionFactor += (Serial.read() - '0') * 100;
     }
     if (negative) correctionFactor = -correctionFactor;
-    rotateServoBy(correctionFactor);
+    rotateStepperBy(correctionFactor);
   }
 
   // Update orientation data with measurements from gyro
@@ -88,7 +85,7 @@ void loop() {
   // Update motor position
   if(update_flag) {
     // Update stepper position (Z/AZM)
-    rotateServoBy(-positionChange);
+    rotateStepperBy(-positionChange);
     positionChange = 0;
     // Reset flag
     update_flag = false;
@@ -116,16 +113,14 @@ void setupIMU() {
 }
 
 /**
-    Rotates a continuous rotation servo a specified number
+    Rotates a stepper motor a specified number
     of degrees.
-    @param degrees to rotate the servo
+    @param degrees to rotate the stepper motor
 */
-void rotateServoBy(float deg) {
-  float wait = abs((deg / 360) / RPM);
-  if (deg < 0) azimuth.write(COUNTER_CLOCK_WISE_SPEED);
-  else azimuth.write(CLOCK_WISE_SPEED);
-  delay(wait * GEAR_RATIO);
-  azimuth.write(ZERO_SPEED);
+int rotateStepperBy(float deg) {
+  int steps = deg / stepSize;
+  azimuth.step(steps);  
+  return steps;
 }
 
 /**
