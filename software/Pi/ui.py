@@ -6,6 +6,7 @@ Dependencies: RPi.GPIO
 Note: will only work on a Raspberry Pi!
 """
 import RPi.GPIO as gpio
+import time
 
 ledPin = 16 #GPIO23
 
