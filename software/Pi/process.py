@@ -1,12 +1,11 @@
 """
 Detects brightest region in image and finds angles needed to rotate
 to center it based on GoPro 4 FOV
-Note: uncomment code commented out with ### when in use on Raspberry Pi 3
 Algorithms: Gaussian Blur and Min/Max Loc
 Python Version: 2.7
 See trello for a comprehensive description of the communication protocol
 Dependencies: PySerial, Numpy, time, gopro_wifi_api_hero4, log, ui, and OpenCV
-Version: 5/07/17
+Version: 5/13/17
 """
 
 import numpy as np
@@ -15,7 +14,8 @@ import serial
 import gopro_wifi_api_hero3 as api
 import log
 import ui
-import os
+import time
+import subprocess
 
 #Constants
 widthAngle   = 13.58
@@ -41,9 +41,9 @@ def main():
         # Retrieve image
         api.capture()
         api.transfer_latest_photo()
-        os.system('mv *.JPEG image.JPEG')
-        image = cv2.imread("image.JPEG")
-        os.system('rm *.JPEG')
+        subprocess.Popen('mv *.JPG image.JPG', shell=True)
+        image = cv2.imread("image.JPG")
+        subprocess.Popen('rm *.JPG', shell=True)
 
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         gray = cv2.GaussianBlur(gray, (41, 41), 0)
@@ -67,7 +67,8 @@ def main():
         try:
             myPort.write(bytes(result))
             log.write_log('normal exec_', result)
-        except: log.write_log('serial error', result)
+        except:
+            log.write_log('serial error', result)
 	
         time.sleep(0.5)
 

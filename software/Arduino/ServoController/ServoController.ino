@@ -71,7 +71,7 @@ void loop() {
       correctionFactor += (Serial.read() - '0') * i;
     }
     if (negative) correctionFactor = -correctionFactor;
-    rotateStepperBy(correctionFactor);
+    rotateStepperBy(-correctionFactor);
   }
 
   // Update orientation data with measurements from gyro
@@ -84,7 +84,7 @@ void loop() {
   // Update motor position
   if(update_flag) {
     // Update stepper position (Z/AZM)
-    float degreesActuallyCorrected = rotateStepperBy(-positionChange);
+    float degreesActuallyCorrected = rotateStepperBy(positionChange);
     positionChange -= degreesActuallyCorrected;
     // Reset flag
     update_flag = false;
