@@ -33,7 +33,7 @@ def setup():
     ui.setup()
     log.setup()
     myPort = serial.Serial('/dev/serial0', 115200)
-    ui.blink()
+    ui.blink(7)
 
 #Correction loop
 def main():
