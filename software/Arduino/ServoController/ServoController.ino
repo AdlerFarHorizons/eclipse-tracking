@@ -85,8 +85,8 @@ void loop() {
   // Update motor position
   if(update_flag) {
     // Update stepper position (Z/AZM)
-    rotateStepperBy(-positionChange);
-    positionChange = 0;
+    float degreesActuallyCorrected = rotateStepperBy(-positionChange);
+    positionChange -= degreesActuallyCorrected;
     // Reset flag
     update_flag = false;
   }
@@ -108,7 +108,7 @@ void setupIMU() {
   imu.settings.device.mAddress = LSM9DS1_M;
   imu.settings.device.agAddress = LSM9DS1_AG;
   while (!imu.begin()) {
-    blinkLED(500, 1);
+    digitalWrite(LED, HIGH);
   }
 }
 
@@ -116,11 +116,13 @@ void setupIMU() {
     Rotates a stepper motor a specified number
     of degrees.
     @param degrees to rotate the stepper motor
+    @return number of degrees actually rotated given precision
+    of the stepper motor
 */
 int rotateStepperBy(float deg) {
-  int steps = deg / stepSize;
+  int steps = deg / stepSize * GEAR_RATIO;
   azimuth.step(steps);  
-  return steps;
+  return steps * stepSize;
 }
 
 /**
