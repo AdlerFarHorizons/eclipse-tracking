@@ -49,6 +49,10 @@ void setup() {
   Serial.begin(115200);
   pinMode(LED, OUTPUT);
 
+  for (int i = 0; i < 4; i++) {
+    pinMode(stepperPins[i], OUTPUT);
+  }
+
   // Setup hardware
   setupIMU(); // Gyro
 
