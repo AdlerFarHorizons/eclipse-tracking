@@ -150,7 +150,7 @@ int zeroGyro(int calibrationSamples) {
     @return number of degrees actually rotated given precision
     of the stepper motor
 */
-int rotateStepperBy(float deg) {
+float rotateStepperBy(float deg) {
   int steps = deg / stepSize * GEAR_RATIO;
   azimuth.step(steps);  
   return steps * stepSize;
