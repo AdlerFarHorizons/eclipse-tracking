@@ -3,7 +3,7 @@
  * and rotating a stepper motor. Accepts correction factors via serial *
  * at 115200 baud.                                                     *
  * Project: Eclipse Tracking (2017)                                    *
- * @Version 4.0 (5/13/2017)                                            *
+ * @Version 4.0 (5/27/2017)                                            *
  * @Author Max Bowman / Jeremy Seeman / George Moe                     *
  ***********************************************************************/
 #include <Stepper.h>
@@ -15,7 +15,7 @@
 // ================ SYSTEM PARAMETERS ===================
 // Sample rates
 int motorUpdateRate = 50; // gyro sample rate
-int calibrationSamples = 1000;
+int calibrationSamples = 500;
 
 // Initial calibration value
 float calibratedOffset = 0;
@@ -68,14 +68,15 @@ void loop() {
 
   // Accept corrections from serial
   if (Serial.available() == 4) {
-    int correctionFactor = 0;
-    byte negative = 0;
-    if (Serial.read() == '1') negative = 1;
+    float correctionFactor = 0;
+    bool negative = false;
+    if (Serial.read() == '1') negative = true;
     for (int i = 100; i >= 1; i /= 10) {
-      correctionFactor += (Serial.read() - '0') * i;
+      correctionFactor += (float)(Serial.read() - '0') * i;
     }
     if (negative) correctionFactor = -correctionFactor;
-    rotateStepperBy(-correctionFactor);
+    rotateStepperBy(correctionFactor);
+    positionChange = 0; // reset gyro based corrections
   }
 
   // Update orientation data with measurements from gyro
@@ -88,8 +89,8 @@ void loop() {
   // Update motor position
   if(update_flag) {
     // Update stepper position (Z/AZM)
-    float degreesActuallyCorrected = rotateStepperBy(positionChange);
-    positionChange -= degreesActuallyCorrected;
+    float degreesActuallyCorrected = rotateStepperBy(-positionChange);
+    positionChange += degreesActuallyCorrected;
     // Reset flag
     update_flag = false;
   }
@@ -138,6 +139,8 @@ int zeroGyro(int calibrationSamples) {
     imu.readGyro();
     float z = imu.calcGyro(imu.gz);
     zSum += z;
+    if (i % 23 == 0)
+      blinkLED(20, 1);
     delay(10);
   }
   return zSum / calibrationSamples;
