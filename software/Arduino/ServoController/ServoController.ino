@@ -30,9 +30,11 @@ LSM9DS1 imu;
 
 int stepperPins[] = {9, 10, 11, 12};
 int numSteps = 200;
+int stepperRPM = 20;
 float stepSize = 9.0 / 5.0;
 
 Stepper azimuth(numSteps, stepperPins[0], stepperPins[1], stepperPins[2], stepperPins[3]);
+azimuth.setSpeed(stepperRPM);
 // ============ Runtime variables ========================
 // Orientation data
 float positionChange;
