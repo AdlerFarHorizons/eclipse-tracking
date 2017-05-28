@@ -137,14 +137,14 @@ float readGyro() {
 */
 int zeroGyro(int calibrationSamples) {
   float zSum = 0;
+  digitalWrite(LED, HIGH);
   for (int i = 0; i < calibrationSamples; i++) {
     imu.readGyro();
     float z = imu.calcGyro(imu.gz);
     zSum += z;
-    if (i % 23 == 0)
-      blinkLED(20, 1);
-    delay(10);
+    delay(5);
   }
+  blinkLED(300, 5);
   return zSum / calibrationSamples;
 }
 
