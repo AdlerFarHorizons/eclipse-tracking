@@ -1,7 +1,0 @@
-In order for the process.py script to startup on Raspberry Pi startup, we modified the .bashrc file in the home directory
-of the Pi user. We then used "sudo raspi-config" to change the boot options to boot to the console with autologin for the Pi user.
-In the .bashrc, we added the following lines to the very end of the file:
-"cd eclipse-tracking/software/Pi"
-"./init.sh"
-
-Be sure Pi has permission to run init.sh. If not, you can change it using the chmod command.
