@@ -3,7 +3,7 @@
  * and rotating a stepper motor. Accepts correction factors via serial *
  * at 115200 baud.                                                     *
  * Project: Eclipse Tracking (2017)                                    *
- * @Version 4.0 (5/27/2017)                                            *
+ * @Version 5/29/2017                                                  *
  * @Author Max Bowman / Jeremy Seeman / George Moe                     *
  ***********************************************************************/
 #include <Stepper.h>
@@ -14,8 +14,8 @@
 
 // ================ SYSTEM PARAMETERS ===================
 // Sample rates
-int motorUpdateRate = 50; // gyro sample rate
-int calibrationSamples = 500;
+const int motorUpdateRate = 50; // gyro sample rate
+const int calibrationSamples = 500;
 
 // Initial calibration value
 float calibratedOffset = 0;
@@ -31,10 +31,9 @@ LSM9DS1 imu;
 int stepperPins[] = {9, 10, 11, 12};
 int numSteps = 200;
 int stepperRPM = 20;
-float stepSize = 9.0 / 5.0;
+float stepSize = 1.8;
 
 Stepper azimuth(numSteps, stepperPins[0], stepperPins[1], stepperPins[2], stepperPins[3]);
-azimuth.setSpeed(stepperRPM);
 // ============ Runtime variables ========================
 // Orientation data
 float positionChange;
@@ -49,18 +48,21 @@ bool update_flag = false; // interrupt flag for executing motor update
 void setup() {
   // Initialize I/O
   Serial.begin(115200);
-  pinMode(LED, OUTPUT);
 
+  // Setup hardware
+  pinMode(LED, OUTPUT);
   for (int i = 0; i < 4; i++) {
     pinMode(stepperPins[i], OUTPUT);
   }
-
-  // Setup hardware
+  azimuth.setSpeed(stepperRPM);
   setupIMU(); // Gyro
 
   // Calibrate the gyro
   calibratedOffset = zeroGyro(calibrationSamples);
 
+  // Find the sun to center on
+  findSun(); // comment this line out for basic testing
+  
   // Setup motor update interval timer
   MsTimer2::set(motorUpdateRate, updateMotor);
   MsTimer2::start();
@@ -76,7 +78,7 @@ void loop() {
     for (int i = 100; i >= 1; i /= 10) {
       correctionFactor += (float)(Serial.read() - '0') * i;
     }
-    if (negative) correctionFactor = -correctionFactor;
+    if (negative) correctionFactor *= -1;
     rotateStepperBy(correctionFactor);
     positionChange = 0; // reset gyro based corrections
   }
@@ -117,6 +119,19 @@ void setupIMU() {
     blinkLED(1000, 1);
   }
   blinkLED(50, 15);
+}
+
+/**
+    Rotates a stepper motor by 1.8 degrees until
+    it recieves a byte from the Raspberry Pi 3
+    indicating that it found the sun
+*/
+void findSun() {
+  while (Serial.available() == 0) {
+    azimuth.step(1);
+    delay(50);
+  }
+  Serial.read();
 }
 
 /**

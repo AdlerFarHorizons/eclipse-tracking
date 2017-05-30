@@ -23,17 +23,39 @@ heightAngle  = 7.66
 widthPixels  = 1280
 heightPixels = 720
 
+sunThreshold = 0 # to be determined by experimentation
+
 conversion   = widthAngle / widthPixels
 center       = (widthPixels / 2, heightPixels / 2)
 
 myPort = None
+
+#Returns true if the sun is in the image
+def sun_in_image():
+    api.capture()
+    api.transfer_latest_photo()
+    subprocess.Popen('mv *.JPG image.JPG', shell=True)
+    image = cv2.imread("image.JPG")
+    subprocess.Popen('rm *.JPG', shell=True)
+
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    gray = cv2.GaussianBlur(gray, (41, 41), 0)
+
+    (minVal, maxVal, minLoc, maxLoc) = cv2.minMaxLoc(gray)
+    if maxVal >= sunThreshold:
+        return True
+    return False
 
 #Set up hardware and logging
 def setup():
     ui.setup()
     log.setup()
     myPort = serial.Serial('/dev/serial0', 115200)
-    ui.blink(7)
+    ui.blink(3)
+    while True:
+        if sun_in_image():
+            myPort.write(b'0') # tell the arduino
+            break
 
 #Correction loop
 def main():
