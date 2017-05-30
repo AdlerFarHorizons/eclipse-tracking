@@ -129,7 +129,7 @@ void setupIMU() {
 void findSun() {
   while (Serial.available() == 0) {
     azimuth.step(1);
-    delay(50);
+    delay(500);
   }
   Serial.read();
 }

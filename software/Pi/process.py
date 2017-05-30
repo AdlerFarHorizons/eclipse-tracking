@@ -54,6 +54,7 @@ def setup():
     ui.setup()
     log.setup()
     myPort = serial.Serial('/dev/serial0', 115200)
+    api.initialize_camera()
     ui.blink(3)
     while True:
         if sun_in_image():
