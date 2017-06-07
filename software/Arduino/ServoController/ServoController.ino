@@ -3,7 +3,7 @@
  * and rotating a stepper motor. Accepts correction factors via serial *
  * at 115200 baud.                                                     *
  * Project: Eclipse Tracking (2017)                                    *
- * @Version 5/29/2017                                                  *
+ * @Version 6/02/2017                                                  *
  * @Author Max Bowman / Jeremy Seeman / George Moe                     *
  ***********************************************************************/
 #include <Stepper.h>
@@ -15,7 +15,7 @@
 // ================ SYSTEM PARAMETERS ===================
 // Sample rates
 const int motorUpdateRate = 50; // gyro sample rate
-const int calibrationSamples = 500;
+const int calibrationSamples = 250;
 
 // Initial calibration value
 float calibratedOffset = 0;
@@ -30,7 +30,7 @@ LSM9DS1 imu;
 
 int stepperPins[] = {9, 10, 11, 12};
 int numSteps = 200;
-int stepperRPM = 20;
+int stepperRPM = 40;
 float stepSize = 1.8;
 
 Stepper azimuth(numSteps, stepperPins[0], stepperPins[1], stepperPins[2], stepperPins[3]);
@@ -51,9 +51,6 @@ void setup() {
 
   // Setup hardware
   pinMode(LED, OUTPUT);
-  for (int i = 0; i < 4; i++) {
-    pinMode(stepperPins[i], OUTPUT);
-  }
   azimuth.setSpeed(stepperRPM);
   setupIMU(); // Gyro
 

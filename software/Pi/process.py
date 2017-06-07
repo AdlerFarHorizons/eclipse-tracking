@@ -23,7 +23,7 @@ heightAngle  = 7.66
 widthPixels  = 1280
 heightPixels = 720
 
-sunThreshold = 230 # to be determined by experimentation
+sunThreshold = 250 # to be determined by experimentation
 
 conversion   = widthAngle / widthPixels
 center       = (widthPixels / 2, heightPixels / 2)
@@ -49,6 +49,27 @@ def sun_in_image():
         return True
     return False
 
+#Calculates and formats degrees to move stepper to center the sun
+def getFormattedDelta(maxLocX, centerX):
+    result = ""
+    #Calculate degrees to move
+    delta = int((maxLocX - centerX) * conversion)
+    str_delta = str(delta)
+    #Handle positive, negative, or zero
+    if (delta == 0):
+        return '0000'
+    elif delta < 0:
+        result = '1'
+        delta = abs(delta)
+    else:
+        result = '0'
+    #Pad result with zeros
+    for i in range(0, 3 - len(str_delta)):
+        result += '0'
+    #Add in the actual value
+    result += str_delta
+    return result
+
 #Set up hardware and logging
 def setup():
     ui.setup()
@@ -58,41 +79,26 @@ def setup():
     ui.blink(3)
     while True:
         if sun_in_image():
-            myPort.write(b'0') # tell the arduino
+            myPort.write(b'0') # tell the arduino to start correcting
             break
 
 #Correction loop
 def main():
     while True:
-        # Retrieve image
+        #Retrieve image
         gray = get_image()
-
+        #Find the brightest region
         (minVal, maxVal, minLoc, maxLoc) = cv2.minMaxLoc(gray)
-
-        result = ""
-
-        delta = int((maxLoc[0] - center[0]) * conversion)
-        str_delta = str(delta)
-
-        if (delta == 0):
-            result = '0000'
-        elif delta < 0:
-            result += '1'
-            delta = abs(delta)
-        else:
-            result += '0'
-
-        for i in range(0, 3 - len(str_delta)):
-            result += '0'
-        result += str_delta
-
+        #Calculate and format offset
+        result = getFormattedDelta(maxLoc[0], center[0])
+        #Send result to the Arduino Uno and log it
         try:
             myPort.write(bytes(result))
             log.write_log('normal exec_', result)
         except:
             log.write_log('serial error', result)
-	
-        time.sleep(0.5)
+        #Wait for half a second
+        time.sleep(7)
 
     log.close()
 
