@@ -15,10 +15,10 @@
 // ================ SYSTEM PARAMETERS ===================
 // Sample rates
 const int motorUpdateRate = 50; // gyro sample rate
-const int calibrationSamples = 250;
+const int calibrationSamples = 1000;
 
 // Initial calibration value
-float calibratedOffset = 0;
+float calibratedOffset;
 
 // Indicator LED
 const int LED = 13;
@@ -37,11 +37,12 @@ Stepper azimuth(numSteps, stepperPins[0], stepperPins[1], stepperPins[2], steppe
 // ============ Runtime variables ========================
 // Orientation data
 float positionChange;
+float correctionSum;
 
 // Interrupt flag
 int timer = millis();
 bool update_flag = false; // interrupt flag for executing motor update
-
+int ref;
 /**
     Sets up system
 */
@@ -63,6 +64,8 @@ void setup() {
   // Setup motor update interval timer
   MsTimer2::set(motorUpdateRate, updateMotor);
   MsTimer2::start();
+
+  ref = millis();
 }
 
 void loop() {
@@ -83,8 +86,9 @@ void loop() {
   // Update orientation data with measurements from gyro
   // Just using angular rates from gyro and time deltas to track position using a Reimann sum.
   int currentTime = millis();
+  
   int deltaT = currentTime - timer;
-  positionChange += deltaT * readGyro() / 1000; // Gyro data is given in 1000ths of a degree, so we divide by 1000
+  positionChange += deltaT * (readGyro()) / 1000; // Gyro data is given in 1000ths of a degree, so we divide by 1000
   timer = currentTime;
 
   // Update motor position
@@ -146,18 +150,17 @@ float readGyro() {
     Finds the calibration constant of the
     gyro.
     @param number of calibration samples
+    @returns degrees of gyro drift per second
 */
-int zeroGyro(int calibrationSamples) {
-  float zSum = 0;
+float zeroGyro(int calibrationSamples) {
+  float gyroSum = 0;
   digitalWrite(LED, HIGH);
   for (int i = 0; i < calibrationSamples; i++) {
-    imu.readGyro();
-    float z = imu.calcGyro(imu.gz);
-    zSum += z;
-    delay(5);
+    gyroSum += readGyro();
   }
   blinkLED(300, 5);
-  return zSum / calibrationSamples;
+  Serial.println(gyroSum / calibrationSamples);
+  return gyroSum / calibrationSamples;
 }
 
 /**
