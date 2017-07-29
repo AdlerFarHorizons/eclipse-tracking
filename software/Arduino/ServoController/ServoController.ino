@@ -17,8 +17,9 @@
 const int motorUpdateRate = 50; // gyro sample rate
 const int calibrationSamples = 1000;
 
-// Initial calibration value
-float calibratedOffset;
+// Initial calibration value [x, y, z]
+char dims[] = {'x', 'y', 'z'};
+float calibrationOffset[] = {0, 0, 0};
 
 // Indicator LED
 const int LED = 13;
@@ -56,10 +57,10 @@ void setup() {
   setupIMU(); // Gyro
 
   // Calibrate the gyro
-  calibratedOffset = zeroGyro(calibrationSamples);
+  zeroGyro();
 
   // Find the sun to center on
-  findSun(); // comment this line out for basic testing
+  // findSun(); // comment this line out for basic testing
   
   // Setup motor update interval timer
   MsTimer2::set(motorUpdateRate, updateMotor);
@@ -88,7 +89,7 @@ void loop() {
   int currentTime = millis();
   
   int deltaT = currentTime - timer;
-  positionChange += deltaT * (readGyro()) / 1000; // Gyro data is given in 1000ths of a degree, so we divide by 1000
+  positionChange += deltaT * (readGyro('z')) / 1000; // Gyro data is given in 1000ths of a degree, so we divide by 1000
   timer = currentTime;
 
   // Update motor position
@@ -139,12 +140,26 @@ void findSun() {
     Reads the IMU's gyro
     @return rate in degrees / ms
 */
-float readGyro() {
+float readGyro(char dim) {
   if (imu.gyroAvailable()) {
     imu.readGyro();
   }
-  return imu.calcGyro(imu.gz) - calibratedOffset;
+  switch (dim) {
+  case 'x':
+    return imu.calcGyro(imu.gx) - calibrationOffset[0];
+    break;
+  case 'y':
+    return imu.calcGyro(imu.gy) - calibrationOffset[1];
+    break;
+  case 'z':
+    return imu.calcGyro(imu.gz) - calibrationOffset[2];
+    break;
+  default:
+    return 0;
+    break;
+  } 
 }
+
 
 
 /**
@@ -153,15 +168,21 @@ float readGyro() {
     @param number of calibration samples
     @returns degrees of gyro drift per second
 */
-float zeroGyro(int calibrationSamples) {
-  float gyroSum = 0;
+void zeroGyro() {
+  float gyroSum;
+  char active_dim; 
   digitalWrite(LED, HIGH);
-  for (int i = 0; i < calibrationSamples; i++) {
-    gyroSum += readGyro();
+  for (int j = 0; j < 3; j++) {
+    active_dim = dims[j];
+    gyroSum = 0;
+    for (int i = 0; i < calibrationSamples; i++) {
+      gyroSum += readGyro(active_dim);
+      }
+    Serial.println(active_dim);
+    Serial.println(gyroSum / calibrationSamples);
+    calibrationOffset[j] = gyroSum / calibrationSamples;
+    blinkLED(300, 5);
   }
-  blinkLED(300, 5);
-  Serial.println(gyroSum / calibrationSamples);
-  return gyroSum / calibrationSamples;
 }
 
 /**
