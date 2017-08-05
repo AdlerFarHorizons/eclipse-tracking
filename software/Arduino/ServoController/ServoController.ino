@@ -3,13 +3,15 @@
  * and rotating a stepper motor. Accepts correction factors via serial *
  * at 115200 baud.                                                     *
  * Project: Eclipse Tracking (2017)                                    *
- * @Version 6/02/2017                                                  *
+ * @Version 8/05/2017                                                  *
  * @Author Max Bowman / Jeremy Seeman / George Moe                     *
  ***********************************************************************/
 #include <Stepper.h>
 #include <Wire.h>
 #include <MsTimer2.h>
 #include <SparkFunLSM9DS1.h>
+#include <MPU9250.h>
+#include <quaternionFilters.h>
 #include "config.h"
 
 // ================ SYSTEM PARAMETERS ===================
@@ -28,6 +30,7 @@ const byte GEAR_RATIO = 1; // servo gear : slip gear
 
 // ============ Initialize electronic interfaces =========
 LSM9DS1 imu;
+MPU9250 verification_imu;
 
 int stepperPins[] = {9, 10, 11, 12};
 int numSteps = 200;
@@ -50,6 +53,7 @@ int ref;
 void setup() {
   // Initialize I/O
   Serial.begin(115200);
+  Wire.begin();
 
   // Setup hardware
   pinMode(LED, OUTPUT);
@@ -117,9 +121,13 @@ void setupIMU() {
   imu.settings.device.commInterface = IMU_MODE_I2C;
   imu.settings.device.mAddress = LSM9DS1_M;
   imu.settings.device.agAddress = LSM9DS1_AG;
-  while (!imu.begin()) {
+  byte veraddr = verification_imu.readByte(MPU9250_ADDRESS, WHO_AM_I_MPU9250); // MPU9250's address should be 0x71
+  while (!imu.begin() || veraddr != 0x71) {
     blinkLED(1000, 1);
   }
+  verification_imu.calibrateMPU9250(verification_imu.gyroBias, verification_imu.accelBias);
+  verification_imu.initMPU9250();
+  verification_imu.getGres();
   blinkLED(50, 15);
 }
 
@@ -145,22 +153,46 @@ float readGyro(char dim) {
     imu.readGyro();
   }
   switch (dim) {
-  case 'x':
-    return imu.calcGyro(imu.gx) - calibrationOffset[0];
-    break;
-  case 'y':
-    return imu.calcGyro(imu.gy) - calibrationOffset[1];
-    break;
-  case 'z':
-    return imu.calcGyro(imu.gz) - calibrationOffset[2];
-    break;
-  default:
-    return 0;
-    break;
+    case 'x':
+      return imu.calcGyro(imu.gx) - calibrationOffset[0];
+      break;
+    case 'y':
+      return imu.calcGyro(imu.gy) - calibrationOffset[1];
+      break;
+    case 'z':
+      return imu.calcGyro(imu.gz) - calibrationOffset[2];
+      break;
+    default:
+      return 0;
+      break;
   } 
 }
 
-
+/**
+    Reads the verification IMU's gyro
+    @return rate in degrees / s
+*/
+float readVerificationGyro(char dim) {
+  if (verification_imu.readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01) {
+    verification_imu.readGyroData(verification_imu.gyroCount);
+  } // if the verification imu's interrupt flag is high, read in gyro data
+  byte whatDim = 0;
+  switch (dim) {
+    case 'x':
+      whatDim = 0;
+      break;
+    case 'y':
+      whatDim = 1;
+      break;
+    case 'z':
+      whatDim = 2;
+      break;
+    default:
+      return 0;
+      break;
+  }
+  return (float) verification_imu.gyroCount[whatDim] * verification_imu.gRes;
+}
 
 /**
     Finds the calibration constant of the
@@ -177,9 +209,7 @@ void zeroGyro() {
     gyroSum = 0;
     for (int i = 0; i < calibrationSamples; i++) {
       gyroSum += readGyro(active_dim);
-      }
-    Serial.println(active_dim);
-    Serial.println(gyroSum / calibrationSamples);
+    }
     calibrationOffset[j] = gyroSum / calibrationSamples;
     blinkLED(300, 5);
   }
