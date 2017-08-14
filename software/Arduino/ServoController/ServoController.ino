@@ -29,21 +29,18 @@ const byte GEAR_RATIO = 1; // servo gear : slip gear
 // ============ Initialize electronic interfaces =========
 LSM9DS1 imu;
 
-int stepperPins[] = {9, 10, 11, 12};
-int numSteps = 200;
-int stepperRPM = 40;
-float stepSize = 1.8;
+const int numSteps = 200;
+const int stepperRPM = 40;
+const float stepSize = 1.8;
 
-Stepper azimuth(numSteps, stepperPins[0], stepperPins[1], stepperPins[2], stepperPins[3]);
+Stepper azimuth(numSteps, 9, 10, 11, 12);
 // ============ Runtime variables ========================
 // Orientation data
 float positionChange;
-float correctionSum;
 
 // Interrupt flag
 int timer = millis();
 bool update_flag = false; // interrupt flag for executing motor update
-int ref;
 /**
     Sets up system
 */
@@ -61,17 +58,19 @@ void setup() {
 
   // Find the sun to center on
   // findSun(); // comment this line out for basic testing
+
+  // Notify the user the system is set up correctly and calibrated
+  blinkLED(1000, 1);
   
   // Setup motor update interval timer
   MsTimer2::set(motorUpdateRate, updateMotor);
   MsTimer2::start();
-
-  ref = millis();
 }
 
 void loop() {
 
-  // Accept corrections from serial
+  // Uncomment to accept corrections from serial
+  /*
   if (Serial.available() == 4) {
     float correctionFactor = 0;
     bool negative = false;
@@ -83,13 +82,14 @@ void loop() {
     rotateStepperBy(correctionFactor);
     positionChange = 0; // reset gyro based corrections
   }
+  */
 
   // Update orientation data with measurements from gyro
   // Just using angular rates from gyro and time deltas to track position using a Reimann sum.
   int currentTime = millis();
   
   int deltaT = currentTime - timer;
-  positionChange += deltaT * (readGyro('z')) / 1000; // Gyro data is given in 1000ths of a degree, so we divide by 1000
+  positionChange += deltaT * readGyro('z') / 1000; // Gyro data is given in 1000ths of a degree, so we divide by 1000
   timer = currentTime;
 
   // Update motor position
@@ -117,23 +117,10 @@ void setupIMU() {
   imu.settings.device.commInterface = IMU_MODE_I2C;
   imu.settings.device.mAddress = LSM9DS1_M;
   imu.settings.device.agAddress = LSM9DS1_AG;
-  while (!imu.begin()) {
-    blinkLED(1000, 1);
-  }
-  blinkLED(50, 15);
-}
 
-/**
-    Rotates a stepper motor by 1.8 degrees until
-    it recieves a byte from the Raspberry Pi 3
-    indicating that it found the sun
-*/
-void findSun() {
-  while (Serial.available() == 0) {
-    azimuth.step(1);
-    delay(500);
-  }
-  Serial.read();
+  digitalWrite(LED, HIGH);
+  while (!imu.begin());
+  digitalWrite(LED, LOW);
 }
 
 /**
@@ -160,8 +147,6 @@ float readGyro(char dim) {
   } 
 }
 
-
-
 /**
     Finds the calibration constant of the
     gyro.
@@ -177,11 +162,11 @@ void zeroGyro() {
     gyroSum = 0;
     for (int i = 0; i < calibrationSamples; i++) {
       gyroSum += readGyro(active_dim);
-      }
-    Serial.println(active_dim);
-    Serial.println(gyroSum / calibrationSamples);
+     }
+    // Serial.println(active_dim);
+    // Serial.println(gyroSum / calibrationSamples);
     calibrationOffset[j] = gyroSum / calibrationSamples;
-    blinkLED(300, 5);
+    blinkLED(300, 1);
   }
 }
 
@@ -211,3 +196,18 @@ void blinkLED(int del, int n) {
     delay(del);
   }
 }
+
+/**
+    Rotates a stepper motor by 1.8 degrees until
+    it recieves a byte over serial
+    indicating that it found the sun
+*/
+/*
+void findSun() {
+  while (Serial.available() == 0) {
+    azimuth.step(1);
+    delay(500);
+  }
+  Serial.read();
+}
+*/
